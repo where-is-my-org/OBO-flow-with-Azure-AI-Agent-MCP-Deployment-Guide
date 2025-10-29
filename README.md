@@ -70,9 +70,9 @@ Set network access configuration:
 
 ### 3. 📤 Deploy Source Code to Azure App Service
 - Confirm the service is woking properly at local before provisioning
-- Click "Azure" in VS Code Extensions and login to your Azure account
+- Click **Azure** in VS Code Extensions and login to your Azure account
 - Under Resources, find your App Service
-- Right-click the App Service and select "Deploy to Web App..."
+- Right-click the App Service and select **Deploy to Web App...**
 - Select the folder containing your source code and confirm the deployment when prompted
 
 ### 4. 🔐 Easy Auth Configuration
@@ -95,7 +95,7 @@ Set network access configuration:
 - Navigate to **Authentication** and ensure the following settings:
     - Click Add a platform > Web
         - Redirect URIs: Add the following URIs
-            - `https://{your-app-service-name}.azurewebsites.net/.auth/login/aad/callback
+            - `https://{your-app-service-name}.azurewebsites.net/.auth/login/aad/callback`
         - Select **Access tokens** and **ID tokens** under Implicit grant and hybrid flows
         - Click **Configure** to save
     - Also add one more redirect URIs, Select **Add URI** under Redirect URIs to add:
@@ -115,14 +115,14 @@ Set network access configuration:
     - Click on **Add a scope**, set the following values and click **Add scope** to save:
         - **Scope name**: `user_impersonation`
         - **Who can consent?**: Admins and users
-        - **Admin consent display name**: `Access OBO
+        - **Admin consent display name**: `Access OBO`
         - **Admin consent description**: `Allows the app to access OBO on behalf of the signed-in user`
     - Under **Authorized client application**
         - Click on **Add a client application**
         - Input the Application (Client) ID of your registered application of API-M
         - Check the box for **user_impersonation** scope
         - Click **Add application** to save
-- Navigate to ***Mainfest*
+- Navigate to **Manifest**
     - Search for `requestedAccessTokenVersion` and set its value to `2` (Microsoft Graph App Manifest (New))
     - Search for `AccessTokenAcceptedVersion` and set its value to `2` (AAD Graph App Manifest (Deprecating Soon))
 - Confirm Easy Auth is working properly by accessing the App Service URL and verifying token is correctly issued
@@ -134,27 +134,27 @@ Set network access configuration:
 ## 🎯 Azure API Management
 
 ### 1. 📊 Set APIs
-- Navigate to your API Management instance in the Azure Portal, click on "APIs" from the left-hand menu
-- Click on "+ Add API" and select "Http"
+- Navigate to your API Management instance in the Azure Portal, click on **APIs** from the left-hand menu
+- Click on **+ Add API** and select **Http**
 - Fill in the following fields:
     - Display name: `named-by-yourself`
     - Name: `named-by-yourself`
     - Web service URL: Enter the URL of your Azure App Service (e.g., `https://your-app-service-url/msft`)
     - API URL suffix: `msft` (optional)
     - Description: `This is API service that provides comprehensive Microsoft Corporation information through RESTful API endpoints. The application serves as a mock data service offering both financial stock data and product portfolio information.`
-    - Click "Create" to add the API
+    - Click **Create** to add the API
 - Click on the newly created API to configure it further
-    - Select "Add Operation" to define the endpoints
+    - Select **Add Operation** to define the endpoints
     - Fill in the following fields for each operation:
         - Display name: `named-by-yourself`
         - Name: `named-by-yourself`
         - URL template: `/headers` (or other endpoint paths)
         - Method: `GET` (or other HTTP methods as needed)
         - Description: `This endpoint returns all the HTTP header data provided by the user without omitting anything.`
-    - Click "Save" to add the operation
-- Test the API by navigating to the "Test" tab within the API Management portal
+    - Click **Save** to add the operation
+- Test the API by navigating to the **Test** tab within the API Management portal
     - Select the operation you want to test
-    - Click "Send" to make a request to your Azure App Service through API Management
+    - Click **Send** to make a request to your Azure App Service through API Management
     - Since Easy Auth is configured, the request should be authenticated, and you should receive an Unauthorized response from your App Service
 
 ### 2. 🔄 Update API-M Registered Application
@@ -183,60 +183,60 @@ Set network access configuration:
             - AZ CLI use the Application (Client) ID: `04b07795-8ddb-461a-bbee-02f9e1bf7b46`
         - Check the box for **user_impersonation** scope for both applications
         - Click **Add application** to save
-- Navigate to ***Mainfest*
-    - Search for `requestedAccessTokenVersion` and set its value to `2` (Microsoft Graph App Manifest (New))
-    - Search for `AccessTokenAcceptedVersion` and set its value to `2` (AAD Graph App Manifest (Deprecating Soon))
+- Navigate to **Manifest**
+    - Search for `requestedAccessTokenVersion` and set its value to `2` in Microsoft Graph App Manifest (New)
+    - Search for `AccessTokenAcceptedVersion` and set its value to `2` in AAD Graph App Manifest (Deprecating Soon)
 
 ### 3. 🔧 Set Up OBO Flow in Policy
 - Navigate to **Named values** under APIs and create new variables needed:
     - `APIMClientId`: Application (Client) ID of your registered application of API-M
     - `APIMClientSecret`: Client Secret of your registered application of API-M
-- Select the API you created earlier and naviagte to "inbound processing"
+- Select the API you created earlier and naviagte to **inbound processing**
 - Click `policy </>` and replcae the `<inblund> ... </inbound>` section with the following code snippet:
     ```xml
-        <!-- - Policies are applied in the order they appear. - Position <base/> inside a section to inherit policies from the outer scope. - Comments within policies are not preserved. -->
-        <!-- Add policies as children to the <inbound>, <outbound>, <backend>, and <on-error> elements -->
-        <policies>
-            <!-- Throttle, authorize, validate, cache, or transform the requests -->
-            <inbound>
-                <base />
-                <validate-jwt header-name="Authorization" failed-validation-httpcode="401">
-                    <openid-config url="https://login.microsoftonline.com/<your-tenant-id>/v2.0/.well-known/openid-configuration" />
-                    <required-claims>
-                        <claim name="aud" match="all">
-                            <value>your-api-m-client-id</value>
-                        </claim>
-                    </required-claims>
-                </validate-jwt>
-                <!--Acquire user access token and store it -->
-                <set-variable name="UserToken" value="@(((String)context.Request.Headers["Authorization"][0]).Substring(7))" />
-                <!--Acquire OBO token -->
-                <send-request ignore-error="true" timeout="20" response-variable-name="oboResponse" mode="new">
-                    <set-url>https://login.microsoftonline.com/<your-tenant-id>/oauth2/v2.0/token</set-url>
-                    <set-method>POST</set-method>
-                    <set-header name="Content-Type" exists-action="override">
-                        <value>application/x-www-form-urlencoded</value>
-                    </set-header>
-                    <set-body>@{ return "grant_type=urn:ietf:params:oauth:grant-type:jwt-bearer&client_id={{APIMClientId}}&client_secret={{APIMClientSecret}}" + "&assertion=" + (string)context.Variables["UserToken"] + "&scope=api://<your-backend-api-client-id>/.default&requested_token_use=on_behalf_of"; }</set-body>
-                </send-request>
-                <!--Set the bearer token -->
-                <set-header name="Authorization" exists-action="override">
-                    <value>@("Bearer " + (String)((IResponse)context.Variables["oboResponse"]).Body.As<JObject>()["access_token"])</value>
+    <!-- - Policies are applied in the order they appear. - Position <base/> inside a section to inherit policies from the outer scope. - Comments within policies are not preserved. -->
+    <!-- Add policies as children to the <inbound>, <outbound>, <backend>, and <on-error> elements -->
+    <policies>
+        <!-- Throttle, authorize, validate, cache, or transform the requests -->
+        <inbound>
+            <base />
+            <validate-jwt header-name="Authorization" failed-validation-httpcode="401">
+                <openid-config url="https://login.microsoftonline.com/<your-tenant-id>/v2.0/.well-known/openid-configuration" />
+                <required-claims>
+                    <claim name="aud" match="all">
+                        <value>your-api-m-client-id</value>
+                    </claim>
+                </required-claims>
+            </validate-jwt>
+            <!--Acquire user access token and store it -->
+            <set-variable name="UserToken" value="@(((String)context.Request.Headers["Authorization"][0]).Substring(7))" />
+            <!--Acquire OBO token -->
+            <send-request ignore-error="true" timeout="20" response-variable-name="oboResponse" mode="new">
+                <set-url>https://login.microsoftonline.com/<your-tenant-id>/oauth2/v2.0/token</set-url>
+                <set-method>POST</set-method>
+                <set-header name="Content-Type" exists-action="override">
+                    <value>application/x-www-form-urlencoded</value>
                 </set-header>
-            </inbound>
-            <!-- Control if and how the requests are forwarded to services -->
-            <backend>
-                <base />
-            </backend>
-            <!-- Customize the responses -->
-            <outbound>
-                <base />
-            </outbound>
-            <!-- Handle exceptions and customize error responses -->
-            <on-error>
-                <base />
-            </on-error>
-        </policies>
+                <set-body>@{ return "grant_type=urn:ietf:params:oauth:grant-type:jwt-bearer&client_id={{APIMClientId}}&client_secret={{APIMClientSecret}}" + "&assertion=" + (string)context.Variables["UserToken"] + "&scope=api://<your-backend-api-client-id>/.default&requested_token_use=on_behalf_of"; }</set-body>
+            </send-request>
+            <!--Set the bearer token -->
+            <set-header name="Authorization" exists-action="override">
+                <value>@("Bearer " + (String)((IResponse)context.Variables["oboResponse"]).Body.As<JObject>()["access_token"])</value>
+            </set-header>
+        </inbound>
+        <!-- Control if and how the requests are forwarded to services -->
+        <backend>
+            <base />
+        </backend>
+        <!-- Customize the responses -->
+        <outbound>
+            <base />
+        </outbound>
+        <!-- Handle exceptions and customize error responses -->
+        <on-error>
+            <base />
+        </on-error>
+    </policies>
     ```
 - 🧪 To successfully test the API, you need to obtain an access token from Azure AD and include it in the request headers
     - use az cli command as below to get the access token
@@ -247,16 +247,16 @@ Set network access configuration:
     - Include the token in the `Authorization` header as a Bearer token (e.g., `Authorization: Bearer <access_token>`)
 
 ### 4. 🌐 Expose API as MCP Server
-- Navigate to your API Management instance in the Azure Portal, click on "MCP Server (Preview)" from the left-hand menu
-- Click on "+ Create MCP Server" and select "Expose an API as an MCP server" and fill in the following fields:
-        - API: Select the API you created earlier from the dropdown menu
-        - API Operation: Select all operations to be exposed
-        - Display name: `named-by-yourself`
-        - Name: `named-by-yourself`
-        - Description: `Provides information about mock data of financial stock data and product portfolio information of MSFT. Also, query user information from request header.`
+- Navigate to your API Management instance in the Azure Portal, click on **MCP Server (Preview)** from the left-hand menu
+- Click on **+ Create MCP Server** and select **Expose an API as an MCP server** and fill in the following fields:
+    - API: Select the API you created earlier from the dropdown menu
+    - API Operation: Select all operations to be exposed
+    - Display name: `named-by-yourself`
+    - Name: `named-by-yourself`
+    - Description: `Provides information about mock data of financial stock data and product portfolio information of MSFT. Also, query user information from request header.`
 
 ### 5. ⚡ Quick Test with GitHub Copilot
-- Open `.github/mcp.json` and click "Add Server", choose "HTTP"
+- Open `.github/mcp.json` and click **Add Server**, choose **HTTP**
 - Fill in the Server URL which get from API-M MCP Server page
 - Add the following to `Authorization` header to MCP Server:
     ```json
@@ -270,7 +270,7 @@ Set network access configuration:
     }
     ```
 - 🔑 Get `Ocp-Apim-Subscription-Key` from API-M
-    - Navigate to your API Management instance in the Azure Portal, click on "Subscriptions" from the left-hand menu
+    - Navigate to your API Management instance in the Azure Portal, click on **Subscriptions** from the left-hand menu
     - From the Display named `Built-in all-access subscription` click **...** on it to view **Show/hide keys**
     - Copy the Primary key value
 
@@ -310,9 +310,9 @@ Set network access configuration:
 
     ## Interaction Rules with User
     - Do not mock or fabricate response data.
-    - If no data can be fetched from MCP, respond with: "No data available."
+    - If no data can be fetched from MCP, respond with: **No data available.**
     - If an error occurs while accessing MCP, return the exact error message encountered during the connection attempt.
-    - If no incoming HTTP request, return "No HTTP data available." Do not mock anything data to response to user.
+    - If no incoming HTTP request, return **No HTTP data available.** Do not mock anything data to response to user.
     ```
 
 ### 🧪 3. Test the Agent with Sample Code
